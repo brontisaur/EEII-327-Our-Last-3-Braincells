@@ -1,0 +1,13 @@
+# Target labels
+ mconf-idf
+# Source files and their labels
+/Users/chara/esp/EEII327/project/wifi_test/station/build/bootloader/CMakeFiles/mconf-idf
+/Users/chara/esp/EEII327/project/wifi_test/station/build/bootloader/CMakeFiles/mconf-idf.rule
+/Users/chara/esp/EEII327/project/wifi_test/station/build/bootloader/CMakeFiles/mconf-idf-complete.rule
+/Users/chara/esp/EEII327/project/wifi_test/station/build/bootloader/mconf-idf-prefix/src/mconf-idf-stamp/mconf-idf-install.rule
+/Users/chara/esp/EEII327/project/wifi_test/station/build/bootloader/mconf-idf-prefix/src/mconf-idf-stamp/mconf-idf-mkdir.rule
+/Users/chara/esp/EEII327/project/wifi_test/station/build/bootloader/mconf-idf-prefix/src/mconf-idf-stamp/mconf-idf-download.rule
+/Users/chara/esp/EEII327/project/wifi_test/station/build/bootloader/mconf-idf-prefix/src/mconf-idf-stamp/mconf-idf-update.rule
+/Users/chara/esp/EEII327/project/wifi_test/station/build/bootloader/mconf-idf-prefix/src/mconf-idf-stamp/mconf-idf-patch.rule
+/Users/chara/esp/EEII327/project/wifi_test/station/build/bootloader/mconf-idf-prefix/src/mconf-idf-stamp/mconf-idf-configure.rule
+/Users/chara/esp/EEII327/project/wifi_test/station/build/bootloader/mconf-idf-prefix/src/mconf-idf-stamp/mconf-idf-build.rule

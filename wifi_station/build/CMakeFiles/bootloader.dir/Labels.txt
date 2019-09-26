@@ -1,0 +1,13 @@
+# Target labels
+ bootloader
+# Source files and their labels
+/Users/chara/esp/EEII327/project/wifi_test/station/build/CMakeFiles/bootloader
+/Users/chara/esp/EEII327/project/wifi_test/station/build/CMakeFiles/bootloader.rule
+/Users/chara/esp/EEII327/project/wifi_test/station/build/CMakeFiles/bootloader-complete.rule
+/Users/chara/esp/EEII327/project/wifi_test/station/build/bootloader-prefix/src/bootloader-stamp/bootloader-install.rule
+/Users/chara/esp/EEII327/project/wifi_test/station/build/bootloader-prefix/src/bootloader-stamp/bootloader-mkdir.rule
+/Users/chara/esp/EEII327/project/wifi_test/station/build/bootloader-prefix/src/bootloader-stamp/bootloader-download.rule
+/Users/chara/esp/EEII327/project/wifi_test/station/build/bootloader-prefix/src/bootloader-stamp/bootloader-update.rule
+/Users/chara/esp/EEII327/project/wifi_test/station/build/bootloader-prefix/src/bootloader-stamp/bootloader-patch.rule
+/Users/chara/esp/EEII327/project/wifi_test/station/build/bootloader-prefix/src/bootloader-stamp/bootloader-configure.rule
+/Users/chara/esp/EEII327/project/wifi_test/station/build/bootloader-prefix/src/bootloader-stamp/bootloader-build.rule

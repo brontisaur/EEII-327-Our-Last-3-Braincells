@@ -1,0 +1,18 @@
+{
+    "project_name":       "bootloader",
+    "project_path":       "/Users/chara/esp/esp-idf/components/bootloader/subproject",
+    "build_dir":          "/Users/chara/esp/EEII327/project/wifi_test/station/build/bootloader",
+    "config_file":        "/Users/chara/esp/EEII327/project/wifi_test/station/sdkconfig",
+    "config_defaults":    "",
+    "app_elf":            "bootloader.elf",
+    "app_bin":            "bootloader.bin",
+    "git_revision":       "v4.1-dev-281-g96b96ae24-dirty",
+    "phy_data_partition": "",
+    "monitor_baud" : "115200",
+    "config_environment" : {
+        "COMPONENT_KCONFIGS" : "/Users/chara/esp/esp-idf/components/efuse/Kconfig;/Users/chara/esp/esp-idf/components/esp32/Kconfig;/Users/chara/esp/esp-idf/components/esp_common/Kconfig;/Users/chara/esp/esp-idf/components/log/Kconfig;/Users/chara/esp/esp-idf/components/spi_flash/Kconfig",
+        "COMPONENT_KCONFIGS_PROJBUILD" : "/Users/chara/esp/esp-idf/components/bootloader/Kconfig.projbuild;/Users/chara/esp/esp-idf/components/esptool_py/Kconfig.projbuild;/Users/chara/esp/esp-idf/components/partition_table/Kconfig.projbuild"
+    },
+    "build_components" : [ "bootloader", "bootloader_support", "efuse", "esp32", "esp_common", "esp_rom", "esptool_py", "log", "main", "micro-ecc", "partition_table", "soc", "spi_flash", "xtensa", "" ],
+    "build_component_paths" : [ "/Users/chara/esp/esp-idf/components/bootloader", "/Users/chara/esp/esp-idf/components/bootloader_support", "/Users/chara/esp/esp-idf/components/efuse", "/Users/chara/esp/esp-idf/components/esp32", "/Users/chara/esp/esp-idf/components/esp_common", "/Users/chara/esp/esp-idf/components/esp_rom", "/Users/chara/esp/esp-idf/components/esptool_py", "/Users/chara/esp/esp-idf/components/log", "/Users/chara/esp/esp-idf/components/bootloader/subproject/main", "/Users/chara/esp/esp-idf/components/bootloader/subproject/components/micro-ecc", "/Users/chara/esp/esp-idf/components/partition_table", "/Users/chara/esp/esp-idf/components/soc", "/Users/chara/esp/esp-idf/components/spi_flash", "/Users/chara/esp/esp-idf/components/xtensa", "" ]
+}
