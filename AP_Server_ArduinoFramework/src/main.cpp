@@ -7,18 +7,18 @@ const char * ssid = "ESPAP";
 const char * password = "hellodaar";
 
 
-String ledState;
-String mode; //placeholder for "led" in absence of breadboard and such
+String ledState,firing;
+String mode, fire; //placeholder for "led" in absence of breadboard and such
 
 AsyncWebServer server(80);
 
 
 String processor(const String& var)  //html string variable processor - will be understood later.
 {
-  Serial.println(var);
+  Serial.println(var);  //how do html placeholder variables work??
   if (var == "STATE")
   {
-    if (mode = "ON")
+    if (mode == "ON")
     {
       ledState = "ON";
     }
@@ -28,7 +28,18 @@ String processor(const String& var)  //html string variable processor - will be 
     }
     Serial.println(ledState);
     return ledState;
-
+  }
+  if (var =="FIRE")
+  {
+    if (fire == "YES")
+    {
+      firing = "YES";
+    }
+    else
+    {
+      firing = "NO";
+    }
+    return firing;
   }
   return String();
 }
@@ -37,8 +48,8 @@ String processor(const String& var)  //html string variable processor - will be 
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
-  mode = "ON";
-
+  mode = "OFF";
+  fire = "NO";
   //SPIFFS Initialisation
   if(!SPIFFS.begin(true))
   {
@@ -62,13 +73,30 @@ void setup() {
 
   //path to toggle LED on:
   server.on("/on", HTTP_GET, [](AsyncWebServerRequest *request){
-    mode = "ON";    
+    if (mode == "ON")
+      {
+        mode = "OFF";
+        fire = "NO";
+      }
+      else
+      {
+        mode = "ON";
+      }
+       //turn this into a toggle?   
     request->send(SPIFFS, "/index.html", String(), false, processor);
   });
 
   //path to toggle LED off:
   server.on("/off", HTTP_GET, [](AsyncWebServerRequest *request){
-    mode = "OFF";    
+    if (mode == "OFF")
+    {
+      fire = "NO";
+    }
+    else
+    {
+      fire = "YES";
+    }
+      //make this the fire button
     request->send(SPIFFS, "/index.html", String(), false, processor);
   });
 
