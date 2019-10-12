@@ -47,7 +47,6 @@ void setup() {
   }
   WiFi.softAP(ssid, password);
   IPAddress IP = WiFi.softAPIP();
-  delay(10000);
   
   Serial.println(IP);
   //path to html file for GET requests (html):
@@ -72,6 +71,9 @@ void setup() {
     mode = "OFF";    
     request->send(SPIFFS, "/index.html", String(), false, processor);
   });
+
+
+  server.begin();
 }
 
 void loop() {
