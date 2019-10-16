@@ -34,7 +34,7 @@ html {
     display: inline-block;
     border: none;
     border-radius: 20px;
-    padding: 16px 40px;
+    padding: 16px 30px;
     font-size: 20px;
     margin: 2px;
     cursor: pointer;
@@ -50,7 +50,7 @@ html {
     float: left;
     border: none;
     border-radius: 20px;
-    padding: 16px 40px;
+    padding: 16px 30px;
     font-size: 20px;
     margin: 2px;
     cursor: pointer;
@@ -59,4 +59,7 @@ html {
   {
     background-color: #000000;
     float: right;
+  }
+  .buttonzero{
+    background-color: magenta;
   }

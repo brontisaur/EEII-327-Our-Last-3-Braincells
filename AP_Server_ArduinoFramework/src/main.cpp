@@ -18,7 +18,6 @@ AsyncWebServer server(80);
 
 String processor(const String& var)  //html string variable processor - will be understood later.
 {
-  Serial.println(var);  //how do html placeholder variables work??
   if (var == "STATE")
   {
     if (mode == "ON")
@@ -29,7 +28,6 @@ String processor(const String& var)  //html string variable processor - will be 
     {
       ledState = "OFF";
     }
-    Serial.println(ledState);
     return ledState;
   }
   if (var =="FIRE")
@@ -73,7 +71,7 @@ void setup() {
   WiFi.softAP(ssid, password);
   IPAddress IP = WiFi.softAPIP();
   
-  Serial.println(IP);
+  //Serial.println(IP);
   //path to html file for GET requests (html):
 
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
@@ -98,6 +96,7 @@ void setup() {
       }
        //turn this into a toggle?   
     request->send(SPIFFS, "/index.html", String(), false, processor);
+    Serial.println(mode);
   });
 
   //path to toggle LED off:
@@ -106,9 +105,14 @@ void setup() {
     {
       fire = "NO";
     }
+    else if (fire == "YES")
+    {
+      Serial.println("Cannot fire again. Disarm.");
+    }
     else
     {
       fire = "YES";
+       Serial.println(fire);
     }
       //make this the fire button
     request->send(SPIFFS, "/index.html", String(), false, processor);
@@ -121,6 +125,7 @@ void setup() {
       tilt+=1;
     }
     request->send(SPIFFS, "/index.html", String(), false, processor);
+    Serial.println(tiltdeg);
   });
 
   server.on("/down", HTTP_GET, [](AsyncWebServerRequest *request){
@@ -129,12 +134,15 @@ void setup() {
       tilt-=1;
     }
     request->send(SPIFFS, "/index.html", String(), false, processor);
+    Serial.println(tiltdeg);
   });
 
   server.on("/left", HTTP_GET, [](AsyncWebServerRequest *request){
     if (pan > -60)
     {
       pan-=1;
+      pandeg = String(pan);
+      Serial.println(pandeg);
     }
     request->send(SPIFFS, "/index.html", String(), false, processor);
   });
@@ -142,10 +150,18 @@ void setup() {
     if (pan < 60)
     {
       pan+=1;
+      pandeg = String(pan);
+      Serial.println(pandeg);
     }
     request->send(SPIFFS, "/index.html", String(), false, processor);
   });
-
+  
+  server.on("/zero", HTTP_GET, [](AsyncWebServerRequest *request){
+    pan = 0;
+    pandeg = String(pan);
+    Serial.println(pandeg);
+    request->send(SPIFFS, "/index.html", String(), false, processor);
+  });
   server.begin();
 }
 
