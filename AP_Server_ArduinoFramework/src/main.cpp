@@ -2,13 +2,16 @@
 #include <ESPAsyncWebServer.h>
 #include <SPIFFS.h>
 #include <WiFiAP.h>
+#include <string.h>
 
 const char * ssid = "ESPAP";
 const char * password = "hellodaar";
 
 
-String ledState,firing;
+String ledState,firing, tiltdeg, pandeg;
 String mode, fire; //placeholder for "led" in absence of breadboard and such
+int tilt = 0;
+int pan = 0;
 
 AsyncWebServer server(80);
 
@@ -41,6 +44,16 @@ String processor(const String& var)  //html string variable processor - will be 
     }
     return firing;
   }
+  if (var == "DEGREE")
+  {
+    tiltdeg = String(tilt);
+    return tiltdeg;
+  }
+  if (var == "HOZ")
+  {
+    pandeg = String(pan);
+    return pandeg;
+  }
   return String();
 }
 
@@ -50,6 +63,7 @@ void setup() {
   Serial.begin(115200);
   mode = "OFF";
   fire = "NO";
+  tiltdeg = "0";
   //SPIFFS Initialisation
   if(!SPIFFS.begin(true))
   {
@@ -72,7 +86,7 @@ void setup() {
   });
 
   //path to toggle LED on:
-  server.on("/on", HTTP_GET, [](AsyncWebServerRequest *request){
+  server.on("/arm", HTTP_GET, [](AsyncWebServerRequest *request){
     if (mode == "ON")
       {
         mode = "OFF";
@@ -87,7 +101,7 @@ void setup() {
   });
 
   //path to toggle LED off:
-  server.on("/off", HTTP_GET, [](AsyncWebServerRequest *request){
+  server.on("/fire", HTTP_GET, [](AsyncWebServerRequest *request){
     if (mode == "OFF")
     {
       fire = "NO";
@@ -100,11 +114,44 @@ void setup() {
     request->send(SPIFFS, "/index.html", String(), false, processor);
   });
 
+//http get request setup for pan and tilt buttons
+  server.on("/up", HTTP_GET, [](AsyncWebServerRequest *request){
+    if (tilt < 90)
+    {
+      tilt+=1;
+    }
+    request->send(SPIFFS, "/index.html", String(), false, processor);
+  });
+
+  server.on("/down", HTTP_GET, [](AsyncWebServerRequest *request){
+    if (tilt > 0)
+    {
+      tilt-=1;
+    }
+    request->send(SPIFFS, "/index.html", String(), false, processor);
+  });
+
+  server.on("/left", HTTP_GET, [](AsyncWebServerRequest *request){
+    if (pan > -60)
+    {
+      pan-=1;
+    }
+    request->send(SPIFFS, "/index.html", String(), false, processor);
+  });
+  server.on("/right", HTTP_GET, [](AsyncWebServerRequest *request){
+    if (pan < 60)
+    {
+      pan+=1;
+    }
+    request->send(SPIFFS, "/index.html", String(), false, processor);
+  });
 
   server.begin();
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
+  //delay 20 ms
+  //send out commands via uart
   //maybe put checking of json files here and sending of UART commands
 }
