@@ -2,18 +2,17 @@
 #include <ESPAsyncWebServer.h>
 #include <SPIFFS.h>
 #include <WiFiAP.h>
-#include <HardwareSerial.h>
-#include <pins_arduino.h>
 
 
 const char * ssid = "ESPAP";
 const char * password = "hellodaar";
 
 
-String ledState,firing, tiltdeg, pandeg;
+String armState,firing, tiltdeg, pandeg;
 String mode, fire; //placeholder for "led" in absence of breadboard and such
 int tilt = 0;
 int pan = 0;
+int power = 0;
 
 //destinations: PANT, FARM - the destination names for the pan&tilt and fire&arm mechanisms
 
@@ -21,30 +20,33 @@ AsyncWebServer server(80);
 
 
 //Serial port definitions
-//HardwareSerial Serial1(1); //declare first serial communication set - PANT
-//HardwareSerial Serial2(2); //declare second serial communication set - FARM
+HardwareSerial PANT(1); //declare first serial communication set - PANT @uart1
+HardwareSerial FARM(2); //declare second serial communication set - FARM @uart2
 
 //definition of TX/RX pins for serial communication
-//#define RX1 4
-//#define TX1 2
-//#define RX2 16
-//#define TX2 17
+#define RX1 4
+#define TX1 2
+#define RX2 16
+#define TX2 17
 
 //Command manager
 
-/*void command(String destination, String command, String value)
+
+void command(int destination, String command, String value)
 {
   switch (destination){
-    case "PANT":
+    case 1:
     {
-      Serial1.print(command);   //print command to PANT
-      Serial1.println(value);   //print value to PANT
+      //PANT.print(command);   //print command to PANT
+      //PANT.println(value);   //print value to PANT
+      Serial.println(value);
       break;
     }
-    case "FARM":
+    case 2:
     {
-      Serial2.print(command);   //print command to FARM
-      Serial2.println(value);   //print value to FARM
+      //FARM.print(command);   //print command to FARM
+      //FARM.println(value);   //print value to FARM
+      Serial.println(value);
       break;
     }
     default:
@@ -53,7 +55,7 @@ AsyncWebServer server(80);
       break;
     }
   };
-}*/
+}
 
 String processor(const String& var)  //html string variable processor - will be understood later.
 {
@@ -61,13 +63,13 @@ String processor(const String& var)  //html string variable processor - will be 
   {
     if (mode == "ON")
     {
-      ledState = "ON";
+      armState = "ON";
     }
     else 
     {
-      ledState = "OFF";
+      armState = "OFF";
     }
-    return ledState;
+    return armState;
   }
   if (var =="FIRE")
   {
@@ -99,8 +101,8 @@ void setup() {
   // put your setup code here, to run once:
   //Set up Serial Communications:
   Serial.begin(115200);
-  //Serial1.begin(9600, SERIAL_8N1, RX1, TX1); //begin communication with PANT at 9600 baud
-  //Serial2.begin(9600, SERIAL_8N1, RX2, TX2); //begin communication with FARM at 9600 baud
+  PANT.begin(9600, SERIAL_8N1, RX1, TX1); //begin communication with PANT at 9600 baud
+  FARM.begin(9600, SERIAL_8N1, RX2, TX2); //begin communication with FARM at 9600 baud
   mode = "OFF";
   fire = "NO";
   tiltdeg = "0";
@@ -117,12 +119,26 @@ void setup() {
   //path to html file for GET requests (html):
 
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, "/index.html", String(), false, processor);
+    if (power) //check to see if powered on
+    {
+      request->send(SPIFFS, "/index.html", String(), false, processor);  
+    }
+    else
+    {
+      request->send(SPIFFS, "/startup.html", String(), false, processor);  
+    }
+    
   });
 
   //path to html file for GET requests (css):
   server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, "/style.css", "text/css");
+  });
+
+  //path to html file for power on
+   server.on("/turnon", HTTP_GET, [](AsyncWebServerRequest *request){
+    power = 1;
+    request->send(SPIFFS, "/index.html", String(), false, processor);
   });
 
   //path to toggle LED on:
@@ -138,7 +154,7 @@ void setup() {
       }
        //turn this into a toggle?   
     request->send(SPIFFS, "/index.html", String(), false, processor);
-    //command("FARM","ARM",mode);
+    command(2,"ARM",mode);
     Serial.println(mode);
   });
 
@@ -155,7 +171,7 @@ void setup() {
     else
     {
       fire = "YES";
-      //command("FARM","FIRE",fire);
+      command(2,"FIRE",fire);
        Serial.println(fire);
     }
       //make this the fire button
@@ -168,7 +184,7 @@ void setup() {
     {
       tilt+=1;
       tiltdeg = String(tilt);
-      //command("PANT","TILT",tiltdeg);
+      command(1,"TILT",tiltdeg);
       Serial.println(tiltdeg);
     }
     request->send(SPIFFS, "/index.html", String(), false, processor);
@@ -180,7 +196,7 @@ void setup() {
     {
       tilt-=1;
       tiltdeg = String(tilt);
-      //command("PANT","TILT",tiltdeg);
+      command(1,"TILT",tiltdeg);
       Serial.println(tiltdeg);
     }
     request->send(SPIFFS, "/index.html", String(), false, processor);
@@ -191,7 +207,7 @@ void setup() {
     {
       pan-=1;
       pandeg = String(pan);
-      //command("PANT","PAN",pandeg);
+      command(1,"PAN",pandeg);
       Serial.println(pandeg);
     }
     request->send(SPIFFS, "/index.html", String(), false, processor);
@@ -201,7 +217,7 @@ void setup() {
     {
       pan+=1;
       pandeg = String(pan);
-      //command("PANT","PAN",pandeg);
+      command(1,"PAN",pandeg);
       Serial.println(pandeg);
     }
     request->send(SPIFFS, "/index.html", String(), false, processor);
@@ -214,8 +230,8 @@ void setup() {
     pan = 0;
     pandeg = String(pan);
     tiltdeg = String(tilt);
-    //command("PANT","TILT",tiltdeg);
-    //command("PANT","PAN",pandeg);
+    command(1,"TILT",tiltdeg);
+    command(1,"PAN",pandeg);
     Serial.println(tiltdeg);
     Serial.println(pandeg); 
     }
