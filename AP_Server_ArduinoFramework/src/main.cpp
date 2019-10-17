@@ -8,11 +8,9 @@ const char * ssid = "ESPAP";
 const char * password = "hellodaar";
 
 
-String armState,firing, tiltdeg, pandeg;
-String mode, fire; //placeholder for "led" in absence of breadboard and such
-int tilt = 0;
-int pan = 0;
-int power = 0;
+String armState,firing, tiltdeg, pandeg, usrMESSAGE;
+String mode, fire;
+int tilt, pan, power, check; //define values for tilt angle, pan angle, power and check
 
 //destinations: PANT, FARM - the destination names for the pan&tilt and fire&arm mechanisms
 
@@ -30,7 +28,6 @@ HardwareSerial FARM(2); //declare second serial communication set - FARM @uart2
 #define TX2 17
 
 //Command manager
-
 
 void command(int destination, String command, String value)
 {
@@ -57,7 +54,16 @@ void command(int destination, String command, String value)
   };
 }
 
-String processor(const String& var)  //html string variable processor - will be understood later.
+/*void checkStatus(void)
+{
+  //send out a command and wait for a reply - will be programmed in during integration
+  //delay(10) //delay for 10 seconds for the purposes of demonstration
+  //set a result message
+}*/
+
+//html processor function - for the VARIABLES!!!
+
+String processor(const String& var)
 {
   if (var == "STATE")
   {
@@ -93,6 +99,10 @@ String processor(const String& var)  //html string variable processor - will be 
     pandeg = String(pan);
     return pandeg;
   }
+  if (var == "MESSAGE")
+  {
+    return usrMESSAGE;   //Message to User
+  }
   return String();
 }
 
@@ -103,19 +113,28 @@ void setup() {
   Serial.begin(115200);
   PANT.begin(9600, SERIAL_8N1, RX1, TX1); //begin communication with PANT at 9600 baud
   FARM.begin(9600, SERIAL_8N1, RX2, TX2); //begin communication with FARM at 9600 baud
+  //initialise modes
   mode = "OFF";
   fire = "NO";
   tiltdeg = "0";
+  pandeg = "0";
+  power = 0; 
+  check = 0;
+  tilt = 0;
+  pan = 0;
+
   //SPIFFS Initialisation
   if(!SPIFFS.begin(true))
   {
   Serial.println("An Error has occurred while mounting SPIFFS");
   return;
   }
-  WiFi.softAP(ssid, password);
+
+  //WiFi.softAP(ssid, password);
   //IPAddress IP = WiFi.softAPIP();
   
   //Serial.println(IP);
+
   //path to html file for GET requests (html):
 
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
@@ -137,8 +156,19 @@ void setup() {
 
   //path to html file for power on
    server.on("/turnon", HTTP_GET, [](AsyncWebServerRequest *request){
+
     power = 1;
+    //check = 1;
+
+    //checkStatus(); //check the status of the system
+
     request->send(SPIFFS, "/index.html", String(), false, processor);
+  });
+
+  //path to html file for power off
+  server.on("/turnoff", HTTP_GET, [](AsyncWebServerRequest *request){
+    power = 0;
+    request->send(SPIFFS, "/startup.html", String(), false, processor);
   });
 
   //path to toggle LED on:
@@ -158,7 +188,7 @@ void setup() {
     Serial.println(mode);
   });
 
-  //path to toggle LED off:
+  //path to enable firing:
   server.on("/fire", HTTP_GET, [](AsyncWebServerRequest *request){
     if (mode == "OFF")
     {
@@ -174,7 +204,6 @@ void setup() {
       command(2,"FIRE",fire);
        Serial.println(fire);
     }
-      //make this the fire button
     request->send(SPIFFS, "/index.html", String(), false, processor);
   });
 
@@ -222,11 +251,11 @@ void setup() {
     }
     request->send(SPIFFS, "/index.html", String(), false, processor);
   });
-  
+  //path to zero the pan/tilt mechanisms
   server.on("/zero", HTTP_GET, [](AsyncWebServerRequest *request){
     if (mode != "ON")
     {
-     tilt = 0;
+    tilt = 0;
     pan = 0;
     pandeg = String(pan);
     tiltdeg = String(tilt);

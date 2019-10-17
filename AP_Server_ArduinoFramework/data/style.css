@@ -63,3 +63,11 @@ html {
   .buttonzero{
     background-color: magenta;
   }
+  .buttonon{
+    display: inline-block;
+    background-color: #f44336;
+  }
+  .buttonoff{
+    display: inline-block;
+    background-color: #f44336;
+  }
