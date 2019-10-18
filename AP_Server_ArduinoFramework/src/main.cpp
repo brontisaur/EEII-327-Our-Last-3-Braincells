@@ -34,16 +34,16 @@ void command(int destination, String command, String value)
   switch (destination){
     case 1:
     {
-      //PANT.print(command);   //print command to PANT
-      //PANT.println(value);   //print value to PANT
-      Serial.println(value);
+      PANT.print(command);   //print command to PANT
+      PANT.println(value);   //print value to PANT
+      //Serial.println(value);
       break;
     }
     case 2:
     {
-      //FARM.print(command);   //print command to FARM
-      //FARM.println(value);   //print value to FARM
-      Serial.println(value);
+      FARM.print(command);   //print command to FARM
+      FARM.println(value);   //print value to FARM
+      //Serial.println(value);
       break;
     }
     default:
@@ -130,8 +130,8 @@ void setup() {
   return;
   }
 
-  //WiFi.softAP(ssid, password);
-  //IPAddress IP = WiFi.softAPIP();
+  WiFi.softAP(ssid, password);
+  IPAddress IP = WiFi.softAPIP();
   
   //Serial.println(IP);
 
