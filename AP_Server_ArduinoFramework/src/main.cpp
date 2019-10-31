@@ -10,7 +10,9 @@ const char * password = "hellodaar";
 
 String armState,firing, tiltdeg, pandeg, usrMESSAGE;
 String mode, fire;
+String response;
 int tilt, pan, power, check; //define values for tilt angle, pan angle, power and check
+int complete = 0;
 
 //destinations: PANT, FARM - the destination names for the pan&tilt and fire&arm mechanisms
 
@@ -183,9 +185,15 @@ void setup() {
         mode = "ON";
       }
        //turn this into a toggle?   
-    request->send(SPIFFS, "/index.html", String(), false, processor);
+
     command(2,"ARM",mode);
+    if (FARM.available())
+      {
+        response = FARM.readStringUntil('\n');
+      }
+      Serial.println(response);
     Serial.println(mode);
+    request->send(SPIFFS, "/index.html", String(), false, processor);
   });
 
   //path to enable firing:
@@ -202,6 +210,11 @@ void setup() {
     {
       fire = "YES";
       command(2,"FIRE",fire);
+      if (FARM.available())
+      {
+        response = FARM.readStringUntil('\n');
+      }
+       Serial.println(response);
        Serial.println(fire);
     }
     request->send(SPIFFS, "/index.html", String(), false, processor);
@@ -214,6 +227,12 @@ void setup() {
       tilt+=1;
       tiltdeg = String(tilt);
       command(1,"TILT",tiltdeg);
+      complete = 0;
+      if (PANT.available())
+      {
+        response = PANT.readStringUntil('\n');
+      }
+      Serial.println(response);
       Serial.println(tiltdeg);
     }
     request->send(SPIFFS, "/index.html", String(), false, processor);
@@ -226,6 +245,10 @@ void setup() {
       tilt-=1;
       tiltdeg = String(tilt);
       command(1,"TILT",tiltdeg);
+      if (PANT.available())
+      {
+        response = PANT.readStringUntil('\n');
+      }
       Serial.println(tiltdeg);
     }
     request->send(SPIFFS, "/index.html", String(), false, processor);
@@ -237,6 +260,11 @@ void setup() {
       pan-=1;
       pandeg = String(pan);
       command(1,"PAN",pandeg);
+      if (PANT.available())
+      {
+        response = PANT.readStringUntil('\n');
+      }
+      Serial.println(response);
       Serial.println(pandeg);
     }
     request->send(SPIFFS, "/index.html", String(), false, processor);
@@ -247,6 +275,11 @@ void setup() {
       pan+=1;
       pandeg = String(pan);
       command(1,"PAN",pandeg);
+      if (PANT.available())
+      {
+        response = PANT.readStringUntil('\n');
+      }
+      Serial.println(response);
       Serial.println(pandeg);
     }
     request->send(SPIFFS, "/index.html", String(), false, processor);
@@ -260,7 +293,17 @@ void setup() {
     pandeg = String(pan);
     tiltdeg = String(tilt);
     command(1,"TILT",tiltdeg);
+    if (FARM.available())
+      {
+        response = FARM.readStringUntil('\n');
+      }
+    Serial.println(response);
     command(1,"PAN",pandeg);
+    if (PANT.available())
+      {
+        response = PANT.readStringUntil('\n');
+      }
+    Serial.println(response);
     Serial.println(tiltdeg);
     Serial.println(pandeg); 
     }
@@ -270,6 +313,12 @@ void setup() {
 }
 
 void loop() {
+
+  //if (PANT.available())
+  //{
+   // response = PANT.readStringUntil('&');
+    //Serial.println(response);
+  //}
   // put your main code here, to run repeatedly:
   //delay 20 ms
   //send out commands via uart
