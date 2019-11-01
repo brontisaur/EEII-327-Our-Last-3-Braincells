@@ -2,6 +2,7 @@
 #include <ESPAsyncWebServer.h>
 #include <SPIFFS.h>
 #include <WiFiAP.h>
+#include <Arduino.h>
 
 
 const char * ssid = "ESPAP";
@@ -13,6 +14,7 @@ String mode, fire;
 String response;
 int tilt, pan, power, check; //define values for tilt angle, pan angle, power and check
 int complete = 0;
+
 
 //destinations: PANT, FARM - the destination names for the pan&tilt and fire&arm mechanisms
 
@@ -28,6 +30,13 @@ HardwareSerial FARM(2); //declare second serial communication set - FARM @uart2
 #define TX1 2
 #define RX2 16
 #define TX2 17
+
+//declaration of GPIO LED Pins
+#define motorSwitch 27
+#define microSwitch 26
+#define powerLED 25
+#define allGOOD 32
+#define intervene 33
 
 //Command manager
 
@@ -111,6 +120,15 @@ String processor(const String& var)
 
 void setup() {
   // put your setup code here, to run once:
+
+  //Set Up GPIO pins
+  pinMode(motorSwitch, OUTPUT); //set up motor switch pin as output
+  pinMode(microSwitch, OUTPUT); //set up micro switch pin as output
+  pinMode(powerLED, OUTPUT); //set up power led pin as output
+  pinMode(allGOOD, OUTPUT); //set up allGOOD led pin as output
+  pinMode(intervene, OUTPUT); //set up intervene led pin as output
+
+
   //Set up Serial Communications:
   Serial.begin(115200);
   PANT.begin(9600, SERIAL_8N1, RX1, TX1); //begin communication with PANT at 9600 baud
@@ -160,9 +178,14 @@ void setup() {
    server.on("/turnon", HTTP_GET, [](AsyncWebServerRequest *request){
 
     power = 1;
+    digitalWrite(powerLED, HIGH); //indicate power has been turned on
+    //digitalWrite(microSwitch, HIGH); //turn on microcontrollers
     //check = 1;
-
     //checkStatus(); //check the status of the system
+    //if (response == "1") //or something to that effet, proceeed with turning on the motors
+    //else if (timeout?) show warning screen: user please restart!
+    //digitalWrite(motorSwitch, HIGH); // turn on motors
+    digitalWrite(allGOOD, HIGH); //indicate that all is well with the system and functional
 
     request->send(SPIFFS, "/index.html", String(), false, processor);
   });
@@ -170,6 +193,10 @@ void setup() {
   //path to html file for power off
   server.on("/turnoff", HTTP_GET, [](AsyncWebServerRequest *request){
     power = 0;
+    digitalWrite(allGOOD, LOW); //turn off all-good signal
+    //digitalWrite(motorSwitch, LOW); //turn off motors
+    //digitalWrite(microSwitch, LOW); //turn off micros
+    digitalWrite(powerLED, LOW); //turn off power LED
     request->send(SPIFFS, "/startup.html", String(), false, processor);
   });
 
@@ -186,12 +213,12 @@ void setup() {
       }
        //turn this into a toggle?   
 
-    command(2,"ARM",mode);
-    if (FARM.available())
-      {
-        response = FARM.readStringUntil('\n');
-      }
-      Serial.println(response);
+    //command(2,"ARM",mode);
+    //if (FARM.available())
+     // {
+      //  response = FARM.readStringUntil('\n');
+     // }
+     // Serial.println(response);
     Serial.println(mode);
     request->send(SPIFFS, "/index.html", String(), false, processor);
   });
@@ -210,11 +237,11 @@ void setup() {
     {
       fire = "YES";
       command(2,"FIRE",fire);
-      if (FARM.available())
-      {
-        response = FARM.readStringUntil('\n');
-      }
-       Serial.println(response);
+      //if (FARM.available())
+      //{
+      //  response = FARM.readStringUntil('&');
+      //}
+       //Serial.println(response);
        Serial.println(fire);
     }
     request->send(SPIFFS, "/index.html", String(), false, processor);
@@ -228,11 +255,11 @@ void setup() {
       tiltdeg = String(tilt);
       command(1,"TILT",tiltdeg);
       complete = 0;
-      if (PANT.available())
-      {
-        response = PANT.readStringUntil('\n');
-      }
-      Serial.println(response);
+     // if (PANT.available())
+     // {
+     //   response = PANT.readStringUntil('\n');
+      //}
+     // Serial.println(response);
       Serial.println(tiltdeg);
     }
     request->send(SPIFFS, "/index.html", String(), false, processor);
@@ -245,10 +272,10 @@ void setup() {
       tilt-=1;
       tiltdeg = String(tilt);
       command(1,"TILT",tiltdeg);
-      if (PANT.available())
-      {
-        response = PANT.readStringUntil('\n');
-      }
+      //if (PANT.available())
+      //{
+      //  response = PANT.readStringUntil('\n');
+      //}
       Serial.println(tiltdeg);
     }
     request->send(SPIFFS, "/index.html", String(), false, processor);
@@ -260,11 +287,11 @@ void setup() {
       pan-=1;
       pandeg = String(pan);
       command(1,"PAN",pandeg);
-      if (PANT.available())
-      {
-        response = PANT.readStringUntil('\n');
-      }
-      Serial.println(response);
+      //if (PANT.available())
+      //{
+      //  response = PANT.readStringUntil('\n');
+      //}
+      //Serial.println(response);
       Serial.println(pandeg);
     }
     request->send(SPIFFS, "/index.html", String(), false, processor);
@@ -275,10 +302,10 @@ void setup() {
       pan+=1;
       pandeg = String(pan);
       command(1,"PAN",pandeg);
-      if (PANT.available())
-      {
-        response = PANT.readStringUntil('\n');
-      }
+      //if (PANT.available())
+      //{
+      //  response = PANT.readStringUntil('\n');
+      //}
       Serial.println(response);
       Serial.println(pandeg);
     }
@@ -293,17 +320,17 @@ void setup() {
     pandeg = String(pan);
     tiltdeg = String(tilt);
     command(1,"TILT",tiltdeg);
-    if (FARM.available())
-      {
-        response = FARM.readStringUntil('\n');
-      }
-    Serial.println(response);
+    //if (FARM.available())
+     // {
+     //   response = FARM.readStringUntil('\n');
+      //}
+    //Serial.println(response);
     command(1,"PAN",pandeg);
-    if (PANT.available())
-      {
-        response = PANT.readStringUntil('\n');
-      }
-    Serial.println(response);
+    //if (PANT.available())
+      //{
+       // response = PANT.readStringUntil('\n');
+      //}
+    //Serial.println(response);
     Serial.println(tiltdeg);
     Serial.println(pandeg); 
     }
@@ -314,13 +341,8 @@ void setup() {
 
 void loop() {
 
-  //if (PANT.available())
-  //{
-   // response = PANT.readStringUntil('&');
-    //Serial.println(response);
-  //}
+  //digitalWrite(motorSwitch, HIGH);
+  //digitalWrite(microSwitch, HIGH);
+
   // put your main code here, to run repeatedly:
-  //delay 20 ms
-  //send out commands via uart
-  //maybe put checking of json files here and sending of UART commands
 }
