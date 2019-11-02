@@ -9,10 +9,11 @@ const char * ssid = "ESPAP";
 const char * password = "hellodaar";
 
 
-String armState,firing, tiltdeg, pandeg, usrMESSAGE;
+String armState,firing, tiltdeg, pandeg, armDEGREE, usrMESSAGE;
 String mode, fire;
 String response;
-int tilt, pan, power, check; //define values for tilt angle, pan angle, power and check
+int tilt, pan, armdeg, power, check; //define values for tilt angle, pan angle, power and check
+int panalive, firealive;
 int complete = 0;
 
 
@@ -52,9 +53,10 @@ void command(int destination, String command, String value)
     }
     case 2:
     {
-      FARM.print(command);   //print command to FARM
-      FARM.println(value);   //print value to FARM
+      FARM.println(command);   //print command to FARM
+      //FARM.println(value);   //print value to FARM
       //Serial.println(value);
+      Serial.println(command);
       break;
     }
     default:
@@ -65,12 +67,32 @@ void command(int destination, String command, String value)
   };
 }
 
-/*void checkStatus(void)
+void checkStatus(void)
 {
+  panalive = 0;
+  firealive = 0;
+  PANT.println("CHEC");
+  FARM.println("CHEC");
+  if (PANT.available())
+  {
+    response = PANT.readStringUntil('&');
+    if (response.startsWith("ON",0))
+    {
+      panalive = 1;
+    }
+  }
+  if (PANT.available())
+  {
+    response = FARM.readStringUntil('&');
+    if (response.startsWith("ON",0))
+    {
+      firealive = 1;
+    }
+  }
   //send out a command and wait for a reply - will be programmed in during integration
   //delay(10) //delay for 10 seconds for the purposes of demonstration
   //set a result message
-}*/
+}
 
 //html processor function - for the VARIABLES!!!
 
@@ -114,6 +136,10 @@ String processor(const String& var)
   {
     return usrMESSAGE;   //Message to User
   }
+  if (var == "PERCENT")
+  {
+    return armDEGREE;
+  }
   return String();
 }
 
@@ -142,6 +168,9 @@ void setup() {
   check = 0;
   tilt = 0;
   pan = 0;
+  armdeg = 50;
+
+  armDEGREE = String(armdeg);
 
   //SPIFFS Initialisation
   if(!SPIFFS.begin(true))
@@ -174,30 +203,62 @@ void setup() {
     request->send(SPIFFS, "/style.css", "text/css");
   });
 
+  server.on("/ret", HTTP_GET, [](AsyncWebServerRequest *request){
+    digitalWrite(intervene, LOW);
+    if (mode == "INTERMEDIATE")
+    {
+      digitalWrite(intervene, HIGH);
+      mode = "DEGREE";
+      request->send(SPIFFS, "/degree.html", String(), false, processor);
+    }
+    else if(mode == "DEGREE")
+    {
+      mode = "ON";
+      command(2, "ARM2", mode);
+      command(2, armDEGREE, mode);
+    }
+    request->send(SPIFFS, "/index.html", String(), false, processor);
+  });
+
   //path to html file for power on
    server.on("/turnon", HTTP_GET, [](AsyncWebServerRequest *request){
 
     power = 1;
     digitalWrite(powerLED, HIGH); //indicate power has been turned on
-    //digitalWrite(microSwitch, HIGH); //turn on microcontrollers
-    //check = 1;
-    //checkStatus(); //check the status of the system
-    //if (response == "1") //or something to that effet, proceeed with turning on the motors
+    digitalWrite(microSwitch, HIGH); //turn on microcontrollers
+    check = 1;
+    delay(1000);
+    digitalWrite(intervene, HIGH);
+   // checkStatus(); //check the status of the system
     //else if (timeout?) show warning screen: user please restart!
-    //digitalWrite(motorSwitch, HIGH); // turn on motors
-    digitalWrite(allGOOD, HIGH); //indicate that all is well with the system and functional
-
+   /* if ((firealive == 1)&&(panalive == 1))
+    {
+      digitalWrite(motorSwitch, HIGH); // turn on motors
+      digitalWrite(allGOOD, HIGH); //indicate that all is well with the system and functional
+      digitalWrite(intervene, LOW);  
+    }*/
     request->send(SPIFFS, "/index.html", String(), false, processor);
   });
 
   //path to html file for power off
   server.on("/turnoff", HTTP_GET, [](AsyncWebServerRequest *request){
-    power = 0;
-    digitalWrite(allGOOD, LOW); //turn off all-good signal
-    //digitalWrite(motorSwitch, LOW); //turn off motors
-    //digitalWrite(microSwitch, LOW); //turn off micros
-    digitalWrite(powerLED, LOW); //turn off power LED
-    request->send(SPIFFS, "/startup.html", String(), false, processor);
+    if (mode == "OFF")
+    {
+      power = 0;
+      firealive = 0;
+      panalive = 0;
+      digitalWrite(allGOOD, LOW); //turn off all-good signal
+      digitalWrite(motorSwitch, LOW); //turn off motors
+      digitalWrite(microSwitch, LOW); //turn off micros
+      digitalWrite(powerLED, LOW); //turn off power LED
+      request->send(SPIFFS, "/startup.html", String(), false, processor);  
+    }
+    else if (mode == "ON")
+    {
+      usrMESSAGE = "The ATRED is still in its armed state, please disarm the ATRED and try again.";
+      digitalWrite(intervene, HIGH);
+      request->send(SPIFFS, "/message.html", String(), false, processor);
+    }
   });
 
   //path to toggle LED on:
@@ -205,22 +266,59 @@ void setup() {
     if (mode == "ON")
       {
         mode = "OFF";
+        command(2, "DARM", mode);
+        request->send(SPIFFS, "/index.html", String(), false, processor);
         fire = "NO";
       }
-      else
+      else if (mode == "OFF")
+      {
+        mode = "INTERMEDIATE";
+        command(2,"ARM1",mode);
+      /* if (FARM.available())
+      {
+        response = FARM.readStringUntil('&');
+      }*/
+        digitalWrite(intervene, HIGH);
+        usrMESSAGE = "Please put the elastic in place over the trigger";
+        request->send(SPIFFS, "/message.html", String(), false, processor);
+        
+      }
+      /*else if (mode == "DEGREE")
       {
         mode = "ON";
-      }
+        command(2, "ARM2", mode);
+        command(2, armDEGREE, mode);
+        request->send(SPIFFS, "/index.html", String(), false, processor);
+      }*
        //turn this into a toggle?   
 
     //command(2,"ARM",mode);
-    //if (FARM.available())
-     // {
-      //  response = FARM.readStringUntil('\n');
-     // }
-     // Serial.println(response);
-    Serial.println(mode);
-    request->send(SPIFFS, "/index.html", String(), false, processor);
+   /* if (FARM.available())
+      {
+        response = FARM.readStringUntil('&');
+      }*/
+   // Serial.println(response);
+   // Serial.println(mode);
+  });
+
+  server.on("/more", HTTP_GET, [](AsyncWebServerRequest *request){
+    if (armdeg < 100)
+    {
+      armdeg+=1;
+      armDEGREE = String(armdeg);
+    }
+    request->send(SPIFFS, "/degree.html", String(), false, processor);
+    
+  });
+
+  server.on("/less", HTTP_GET, [](AsyncWebServerRequest *request){
+    if (armdeg > 0)
+    {
+      armdeg-=1;
+      armDEGREE = String(armdeg);
+    }
+    request->send(SPIFFS, "/degree.html", String(), false, processor);
+    
   });
 
   //path to enable firing:
@@ -237,12 +335,12 @@ void setup() {
     {
       fire = "YES";
       command(2,"FIRE",fire);
-      //if (FARM.available())
-      //{
-      //  response = FARM.readStringUntil('&');
-      //}
+      /*if (FARM.available())
+      {
+        response = FARM.readStringUntil('&');
+      }*/
        //Serial.println(response);
-       Serial.println(fire);
+       //Serial.println(fire);
     }
     request->send(SPIFFS, "/index.html", String(), false, processor);
   });
@@ -255,12 +353,12 @@ void setup() {
       tiltdeg = String(tilt);
       command(1,"TILT",tiltdeg);
       complete = 0;
-     // if (PANT.available())
-     // {
-     //   response = PANT.readStringUntil('\n');
-      //}
+     /*if (PANT.available())
+     {
+        response = PANT.readStringUntil('\n');
+     }*/
      // Serial.println(response);
-      Serial.println(tiltdeg);
+      //Serial.println(tiltdeg);
     }
     request->send(SPIFFS, "/index.html", String(), false, processor);
     
@@ -272,11 +370,11 @@ void setup() {
       tilt-=1;
       tiltdeg = String(tilt);
       command(1,"TILT",tiltdeg);
-      //if (PANT.available())
-      //{
-      //  response = PANT.readStringUntil('\n');
-      //}
-      Serial.println(tiltdeg);
+      /*if (PANT.available())
+      {
+        response = PANT.readStringUntil('\n');
+      }*/
+      //Serial.println(tiltdeg);
     }
     request->send(SPIFFS, "/index.html", String(), false, processor);
   });
@@ -287,10 +385,10 @@ void setup() {
       pan-=1;
       pandeg = String(pan);
       command(1,"PAN",pandeg);
-      //if (PANT.available())
-      //{
-      //  response = PANT.readStringUntil('\n');
-      //}
+      /*if (PANT.available())
+      {
+        response = PANT.readStringUntil('\n');
+      }*/
       //Serial.println(response);
       Serial.println(pandeg);
     }
@@ -302,11 +400,11 @@ void setup() {
       pan+=1;
       pandeg = String(pan);
       command(1,"PAN",pandeg);
-      //if (PANT.available())
-      //{
-      //  response = PANT.readStringUntil('\n');
-      //}
-      Serial.println(response);
+      /*if (PANT.available())
+      {
+        response = PANT.readStringUntil('\n');
+      }*/
+      //Serial.println(response);
       Serial.println(pandeg);
     }
     request->send(SPIFFS, "/index.html", String(), false, processor);
@@ -320,16 +418,16 @@ void setup() {
     pandeg = String(pan);
     tiltdeg = String(tilt);
     command(1,"TILT",tiltdeg);
-    //if (FARM.available())
-     // {
-     //   response = FARM.readStringUntil('\n');
-      //}
+    /*if (FARM.available())
+     {
+       response = FARM.readStringUntil('\n');
+     }*/
     //Serial.println(response);
     command(1,"PAN",pandeg);
-    //if (PANT.available())
-      //{
-       // response = PANT.readStringUntil('\n');
-      //}
+    /*if (PANT.available())
+      {
+        response = PANT.readStringUntil('\n');
+      }*/
     //Serial.println(response);
     Serial.println(tiltdeg);
     Serial.println(pandeg); 
