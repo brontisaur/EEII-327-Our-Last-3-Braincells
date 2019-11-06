@@ -12,6 +12,7 @@ const char * password = "hellodaar";
 String armState,firing, tiltdeg, pandeg, armDEGREE, usrMESSAGE;
 String mode, fire;
 String response;
+String armDEGCOM;
 int tilt, pan, armdeg, power, check; //define values for tilt angle, pan angle, power and check
 int panalive, firealive;
 int complete = 0;
@@ -205,17 +206,9 @@ void setup() {
 
   server.on("/ret", HTTP_GET, [](AsyncWebServerRequest *request){
     digitalWrite(intervene, LOW);
-    if (mode == "INTERMEDIATE")
+    if ((mode == "ON")&&(fire == "NO"))
     {
-      digitalWrite(intervene, HIGH);
-      mode = "DEGREE";
-      request->send(SPIFFS, "/degree.html", String(), false, processor);
-    }
-    else if(mode == "DEGREE")
-    {
-      mode = "ON";
-      command(2, "ARM2", mode);
-      command(2, armDEGREE, mode);
+      mode = "OFF";
     }
     request->send(SPIFFS, "/index.html", String(), false, processor);
   });
@@ -265,38 +258,35 @@ void setup() {
   server.on("/arm", HTTP_GET, [](AsyncWebServerRequest *request){
     if (mode == "ON")
       {
-        mode = "OFF";
-        command(2, "DARM", mode);
-        request->send(SPIFFS, "/index.html", String(), false, processor);
-        fire = "NO";
+        if (fire == "NO")
+        {
+          digitalWrite(intervene, HIGH);
+          usrMESSAGE = "Please remove the ammunition from the ATRED and take the elastic off the trigger before you continuing. OL3BC takes no responsibility for stupidity.";
+          request->send(SPIFFS, "/message.html", String(), false, processor);
+        }
+        else if (fire == "YES")
+        {
+          mode = "OFF";
+          command(2, "DARM", mode);
+          fire = "NO";
+          digitalWrite(intervene, HIGH);
+          request->send(SPIFFS, "/index.html", String(), false, processor);
+        }
       }
       else if (mode == "OFF")
       {
-        mode = "INTERMEDIATE";
+        //mode = "INTERMEDIATE";
         command(2,"ARM1",mode);
       /* if (FARM.available())
       {
         response = FARM.readStringUntil('&');
       }*/
         digitalWrite(intervene, HIGH);
-        usrMESSAGE = "Please put the elastic in place over the trigger";
-        request->send(SPIFFS, "/message.html", String(), false, processor);
+        usrMESSAGE = "Please put the elastic in place over the trigger before continuing";
+        request->send(SPIFFS, "/degree.html", String(), false, processor);
         
       }
-      /*else if (mode == "DEGREE")
-      {
-        mode = "ON";
-        command(2, "ARM2", mode);
-        command(2, armDEGREE, mode);
-        request->send(SPIFFS, "/index.html", String(), false, processor);
-      }*
        //turn this into a toggle?   
-
-    //command(2,"ARM",mode);
-   /* if (FARM.available())
-      {
-        response = FARM.readStringUntil('&');
-      }*/
    // Serial.println(response);
    // Serial.println(mode);
   });
@@ -318,6 +308,14 @@ void setup() {
       armDEGREE = String(armdeg);
     }
     request->send(SPIFFS, "/degree.html", String(), false, processor);
+    
+  });
+
+  server.on("/degret", HTTP_GET, [](AsyncWebServerRequest *request){
+    mode = "ON";
+    command(FARM, "ARM2", mode);
+    command(FARM, armDEGREE, mode);
+    request->send(SPIFFS, "/index.html", String(), false, processor);
     
   });
 
