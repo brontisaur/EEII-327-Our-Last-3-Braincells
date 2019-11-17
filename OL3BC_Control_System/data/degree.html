@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>OL3BC - ATRED Control Station - Powered Off</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="icon" href="data:,">
+        <link rel="stylesheet" type="text/css" href="style.css">
+    </head>
+    <body>
+        <h1>OL3BC - ATRED Control Station</h1>
+        <p1>%MESSAGE%</p1>
+        <p2>Intensity Percent:</p2>
+        <p3><strong>%PERCENT%</strong></p3>   
+        <form action="/degget">
+            Select Intensity Percentage: <input type="text" name="armdeg">
+            <input type="submit" value="Select">
+          </form>
+        <p><a href="/degret"><button class="buttondirectional buttonon">Continue</button></a></p> 
+    </body>
+</html>
