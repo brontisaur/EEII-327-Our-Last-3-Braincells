@@ -84,7 +84,7 @@ void command(int destination, String command, String value)
             PANT.println(value);
             complete = 1;
           }
-          else if(response.startsWith("NON"),0)
+          else if(response.startsWith("NEE",0))
           {
             complete = 2;
           }
@@ -114,19 +114,17 @@ void command(int destination, String command, String value)
           {
             complete = 1;
           }
-          else if(response.startsWith("NAK",0))
+          if(response.startsWith("NAK",0))
           {
             FARM.println(command);
             complete = 1;
           }
-          else if(response.startsWith("NON"),0)
+          if(response.startsWith("NEE",0))
           {
             complete = 2;
           }
         }
       }
-
-
       delay(500); //temporary delay function for testing purposes
       digitalWrite(FARMALLOW, LOW);
       break;
@@ -207,12 +205,10 @@ String processor(const String& var)
   }
   if (var == "DEGREE")
   {
-    tiltdeg = String(tilt);
     return tiltdeg;
   }
   if (var == "HOZ")
   {
-    pandeg = String(pan);
     return pandeg;
   }
   if (var == "MESSAGE")
@@ -329,7 +325,16 @@ void setup() {
 
   //path to html file for power off
   server.on("/turnoff", HTTP_GET, [](AsyncWebServerRequest *request){
-    if (mode == "OFF")
+    command(1, "CONT", "0000");
+    if (complete != 2)
+    {
+      command(2, "CONT", "0000");  
+    }
+    if (complete == 2)
+    {
+      request->send(SPIFFS, "/index.html", String(), false, processor);
+    }
+    if ((mode == "OFF")&&(complete != 2))
     {
       power = 0;
       firealive = 0;
@@ -375,9 +380,16 @@ void setup() {
       else if (mode == "OFF")
       {
         command(2,"ARM1",mode);
-        digitalWrite(intervene, HIGH);
-        usrMESSAGE = "Please put the elastic in place over the trigger before continuing";
-        request->send(SPIFFS, "/degree.html", String(), false, processor);
+        if (complete == 2)
+        {
+          request->send(SPIFFS, "/index.html", String(), false, processor);
+        }
+        else
+        {
+          digitalWrite(intervene, HIGH);
+          usrMESSAGE = "Please put the elastic in place over the trigger before continuing";
+          request->send(SPIFFS, "/degree.html", String(), false, processor);  
+        }        
         
       }
   });
