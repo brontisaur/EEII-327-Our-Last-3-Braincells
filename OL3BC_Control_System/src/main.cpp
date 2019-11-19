@@ -19,6 +19,11 @@ int panalive, firealive;
 int complete = 1;
 int powercheck = 0;
 
+int timeout = 1500; // max wait period for system check
+unsigned long now = 0; //time to be taken at the start of the system check 
+
+int timedout = 0; //timeout flag
+
 //parameters for input forms:
 
 const char* PARAM_INPUT_1 = "armdeg"; //arm degree input
@@ -149,6 +154,13 @@ void checkStatus(void)
   delay(100);
   PANT.println("CHEC");
   FARM.println("CHEC");
+
+  now = millis(); //get current time
+  timedout = 0;
+
+  while ((millis() < now + timeout)&&((panalive == 0)&&(firealive == 0))) //while we are not yet timed out and we have no living parts yet
+  {
+
   if (PANT.available())
   {
     response = PANT.readStringUntil('&');
@@ -165,11 +177,18 @@ void checkStatus(void)
       firealive = 1;
     }
   }
+
+  }
+
+
+  if (millis >= (now + timeout))
+  {
+    timedout = 1;
+  }
+
   delay(500);
   digitalWrite(PANTALLOW, LOW);
   digitalWrite(FARMALLOW, LOW);
-  panalive = 1;
-  firealive = 1;
   //send out a command and wait for a reply - will be programmed in during integration
   //delay(10) //delay for 10 seconds for the purposes of demonstration
   //set a result message
@@ -293,13 +312,24 @@ void setup() {
       {
         mode = "ON";
       }
+      digitalWrite(allGOOD, HIGH);
+      request->send(SPIFFS, "/index.html", String(), false, processor);
     }
     else if (powercheck == 1)
     {
       powercheck = 0;
+      digitalWrite(allGOOD, HIGH);
+      request->send(SPIFFS, "/index.html", String(), false, processor);
     }
-    digitalWrite(allGOOD, HIGH);
-    request->send(SPIFFS, "/index.html", String(), false, processor);
+    if (power = 0)
+    {
+      digitalWrite(powerLED, LOW);
+      digitalWrite(PANTALLOW, LOW);
+      digitalWrite(FARMALLOW, LOW);
+      request->send(SPIFFS, "/startup.html", String(), false, processor);
+    }
+    //digitalWrite(allGOOD, HIGH);
+    //request->send(SPIFFS, "/index.html", String(), false, processor);
   });
 
   //path to html file for power on
@@ -311,16 +341,24 @@ void setup() {
     check = 1;
     delay(1000);
     digitalWrite(intervene, HIGH);
-   // checkStatus(); //check the status of the system
-    //else if (timeout?) show warning screen: user please restart!
-   /*if ((firealive == 1)&&(panalive == 1))
+    checkStatus(); //check the status of the system
+   if ((firealive == 1)&&(panalive == 1))
     {
       digitalWrite(motorSwitch, HIGH); // turn on motors
       digitalWrite(allGOOD, HIGH); //indicate that all is well with the system and functional
       digitalWrite(motorSwitch, HIGH);
       digitalWrite(intervene, LOW);  
-    }*/
-    request->send(SPIFFS, "/index.html", String(), false, processor);
+      request->send(SPIFFS, "/index.html", String(), false, processor);
+    }
+    else if(timedout == 1)
+    {
+      power = 0;
+      digitalWrite(microSwitch, LOW);
+      check = 0;
+      usrMESSAGE = "Responses have not been received from the rest of the system. Please check for faults and restart.";
+      request->send(SPIFFS, "/message.html", String(), false, processor);
+    }
+    //request->send(SPIFFS, "/index.html", String(), false, processor);
   });
 
   //path to html file for power off
@@ -339,6 +377,8 @@ void setup() {
       power = 0;
       firealive = 0;
       panalive = 0;
+      command(1, "PAN", "0");//set pan to 0
+      command(1, "TILT", "0"); //set tilt to 0
       digitalWrite(PANTALLOW, LOW);
       digitalWrite(FARMALLOW, LOW);
       digitalWrite(allGOOD, LOW); //turn off all-good signal
@@ -365,14 +405,19 @@ void setup() {
         if (fire == "NO")
         {
           digitalWrite(intervene, HIGH);
-          usrMESSAGE = "Please ensure that the mechanism is still. Remove the ammunition from the ATRED and take the elastic off the trigger before you continuing. OL3BC takes no responsibility for stupidity.";
+          usrMESSAGE = "Please ensure that the mechanism is still. Remove the ammunition from the ATRED and take the elastic off the trigger before continuing.";
           request->send(SPIFFS, "/message.html", String(), false, processor);
         }
         else if (fire == "YES")
         {
           mode = "OFF";
-          command(2, "DARM", mode);
+          command(2, "DARM", mode); //command a disarm after user has confirmed elastic is removed
           fire = "NO";
+          if (complete == 2)
+          {
+            mode = "ON";
+            fire = "YES";
+          }
           //digitalWrite(intervene, HIGH);
           request->send(SPIFFS, "/index.html", String(), false, processor);
         }
