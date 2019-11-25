@@ -14,10 +14,15 @@ String pandegpre, tiltdegpre;
 String mode, fire;
 String response;
 String armDEGCOM;
+
+String padding ="";
+
 int tilt, pan, armdeg, power, check; //define values for tilt angle, pan angle, power and check
 int panalive, firealive;
 int complete = 1;
 int powercheck = 0;
+
+int len = 0; //response length variable
 
 int timeout = 1500; // max wait period for system check
 unsigned long now = 0; //time to be taken at the start of the system check 
@@ -30,15 +35,8 @@ const char* PARAM_INPUT_1 = "armdeg"; //arm degree input
 const char* PARAM_INPUT_2 = "panVAL"; //pan degree value input
 const char* PARAM_INPUT_3 = "tiltVAL"; //tilt degree value input
 
+char resp[] = "bit";
 
-//destinations: PANT, FARM - the destination names for the pan&tilt and fire&arm mechanisms
-
-AsyncWebServer server(80);
-
-
-//Serial port definitions
-HardwareSerial PANT(1); //declare first serial communication set - PANT @uart1
-HardwareSerial FARM(2); //declare second serial communication set - FARM @uart2
 
 //definition of TX/RX pins for serial communication
 #define RX1 4
@@ -62,32 +60,87 @@ void command(int destination, String command, String value)
 {
   pinMode(PANTALLOW, OUTPUT);
   pinMode(FARMALLOW, OUTPUT);
-  //complete = 0;
+  pinMode(ACK, INPUT);
+  complete = 0;
   response = " ";
   switch (destination){
     case 1:
     {
+      if (value.length() < 4)
+      {
+        if (value.length() == 3)
+        {
+          padding = "0";
+          padding.concat(value);
+          value = padding;
+        }
+        else if(value.length() == 2)
+        {
+          padding = "00";
+          padding.concat(value);
+          value = padding;
+        }
+        else if (value.length() == 1)
+        {
+          padding = "000";
+          padding.concat(value);
+          value = padding;
+        }
+      }
       digitalWrite(PANTALLOW, HIGH);
       delay(100);
-      PANT.print(command);   //print command to PANT
-      PANT.println(value);
+      Serial1.println(command);   //print command to PANT
+      //Serial1.println(value);
       complete = 0;
 
-      while(complete == 0)
+     while(complete == 0)
       {
-        if (PANT.available())
+        if (Serial1.available())
         {
-          response = PANT.readStringUntil('&');
-          PANT.println(response); //temporary for testing purposes
+          response = Serial1.readStringUntil('&');
+          len = response.length();
+          response = response.substring(len-3,len);
+
           if (response.startsWith("ACK",0))
           {
             complete = 1;
           }
           else if(response.startsWith("NAK",0))
           {
-            PANT.print(command);
-            PANT.println(value);
+            complete = 2;
+          }
+          else if(response.startsWith("NEE",0))
+          {
+            complete = 2;
+          }
+        }
+      }
+      
+      delay(100); 
+      digitalWrite(PANTALLOW, LOW);
+    
+    if ((!command.startsWith("CONT",0))&&(!command.startsWith("ZERO",0)))
+    { 
+      digitalWrite(PANTALLOW, HIGH);
+      delay(100);
+
+      Serial1.println(value);
+      complete = 0;
+
+      while(complete == 0)
+      {
+        if (Serial1.available())
+        {
+          response = Serial1.readStringUntil('&');
+          len = response.length();
+          response = response.substring(len-3,len);
+          if (response.startsWith("ACK",0))
+          {
             complete = 1;
+          }
+          else if(response.startsWith("NAK",0))
+          {
+            complete = 2;
           }
           else if(response.startsWith("NEE",0))
           {
@@ -96,33 +149,57 @@ void command(int destination, String command, String value)
         }
       }
 
-      delay(500); //temporary delay function
+      delay(100);
       digitalWrite(PANTALLOW, LOW);
-      //Serial.println(value);
+    }
+      
       break;
     }
     case 2:
     {
+      if (command.length() < 4)
+      {
+        if (command.length() == 3)
+        {
+          padding = "0";
+          padding.concat(command);
+          command = padding;
+        }
+        else if(command.length() == 2)
+        {
+          padding = "00";
+          padding.concat(command);
+          command = padding;
+        }
+        else if(command.length() == 1)
+        {
+          padding = "000";
+          padding.concat(command);
+          command = padding;
+        }
+      }
       digitalWrite(FARMALLOW, HIGH);
       delay(100); //give time for debouncing on other end
-      FARM.println(command);   //print command to FARM
+      Serial2.flush(); //flush before sending
+      Serial2.println(command);   //print command to FARM
+      //Serial1.println(command); //test
       response = " ";
       complete = 0;
       
       while(complete == 0)
       {
-        if (FARM.available())
+        if (Serial2.available())  //if there are bytes to receive from the other end
         {
-          response = FARM.readStringUntil('&');
-          FARM.println(response); //temporary for testing purposes
+          response = Serial2.readStringUntil('&');
+          len = response.length();
+          response = response.substring(len-3,len);
           if (response.startsWith("ACK",0))
           {
             complete = 1;
           }
           if(response.startsWith("NAK",0))
           {
-            FARM.println(command);
-            complete = 1;
+            complete = 2;
           }
           if(response.startsWith("NEE",0))
           {
@@ -130,7 +207,7 @@ void command(int destination, String command, String value)
           }
         }
       }
-      delay(500); //temporary delay function for testing purposes
+      delay(100); 
       digitalWrite(FARMALLOW, LOW);
       break;
     }
@@ -142,18 +219,22 @@ void command(int destination, String command, String value)
   };
 }
 
+
 void checkStatus(void)
 {
   pinMode(PANTALLOW, OUTPUT);
   pinMode(FARMALLOW, OUTPUT);
+  pinMode(ACK, INPUT);
   panalive = 0;
   firealive = 0;
-  response = "";
+  response = "bitch";
   digitalWrite(PANTALLOW,HIGH);
   digitalWrite(FARMALLOW, HIGH);
   delay(100);
-  PANT.println("CHEC");
-  FARM.println("CHEC");
+  Serial1.flush();
+  Serial2.flush();
+  Serial1.println("CHEC");
+  Serial2.println("CHEC");
 
   now = millis(); //get current time
   timedout = 0;
@@ -161,18 +242,26 @@ void checkStatus(void)
   while ((millis() < now + timeout)&&((panalive == 0)&&(firealive == 0))) //while we are not yet timed out and we have no living parts yet
   {
 
-  if (PANT.available())
+  if (Serial1.available())
   {
-    response = PANT.readStringUntil('&');
-    if ((response.startsWith("ON",0))||(response.startsWith("NAK",0)))
+    response = Serial1.readStringUntil('&');
+    len = response.length();
+    response.substring(len-3,len);
+    Serial.println(response);
+    if ((response.startsWith("ACK",0))||(response.startsWith("NAK",0)))
     {
       panalive = 1;
     }
   }
-  if (FARM.available())
+  if (Serial2.available())
   {
-    response = FARM.readStringUntil('&');
-    if ((response.startsWith("ON",0))||(response.startsWith("NAK",0)))
+    response = Serial2.readStringUntil('&');
+    len = response.length();
+    response = response.substring(len-3,len);
+    Serial.println(response);
+    Serial1.println(len);
+    Serial1.println(response);
+   if ((response.startsWith("ACK",0)) || (response.startsWith("ACK",0)))
     {
       firealive = 1;
     }
@@ -180,18 +269,14 @@ void checkStatus(void)
 
   }
 
-
-  if (millis >= (now + timeout))
+  if (millis() >= (now + timeout))
   {
     timedout = 1;
   }
 
-  delay(500);
+  delay(100);
   digitalWrite(PANTALLOW, LOW);
   digitalWrite(FARMALLOW, LOW);
-  //send out a command and wait for a reply - will be programmed in during integration
-  //delay(10) //delay for 10 seconds for the purposes of demonstration
-  //set a result message
 }
 
 //html processor function - for the VARIABLES!!!
@@ -243,7 +328,6 @@ String processor(const String& var)
 
 
 void setup() {
-  // put your setup code here, to run once:
 
   //Set Up GPIO pins
   pinMode(motorSwitch, OUTPUT); //set up motor switch pin as output
@@ -255,9 +339,9 @@ void setup() {
 
 
   //Set up Serial Communications:
-  Serial.begin(115200);
-  PANT.begin(9600, SERIAL_8N1, RX1, TX1); //begin communication with PANT at 9600 baud
-  FARM.begin(9600, SERIAL_8N1, RX2, TX2); //begin communication with FARM at 9600 baud
+  Serial.begin(9600);
+  Serial1.begin(9600, SERIAL_8N1, RX1, TX1); //begin communication with PAN and TILT at 9600 baud
+  Serial2.begin(9600, SERIAL_8N1, RX2, TX2); //begin communication with FIRE and ARM at 9600 baud
   //initialise modes
   mode = "OFF";
   fire = "NO";
@@ -280,8 +364,6 @@ void setup() {
 
   WiFi.softAP(ssid, password);
   IPAddress IP = WiFi.softAPIP();
-  
-  //Serial.println(IP);
 
   //path to html file for GET requests (html):
 
@@ -321,7 +403,7 @@ void setup() {
       digitalWrite(allGOOD, HIGH);
       request->send(SPIFFS, "/index.html", String(), false, processor);
     }
-    if (power = 0)
+    if (power == 0)
     {
       digitalWrite(powerLED, LOW);
       digitalWrite(PANTALLOW, LOW);
@@ -354,6 +436,7 @@ void setup() {
     {
       power = 0;
       digitalWrite(microSwitch, LOW);
+      digitalWrite(motorSwitch, LOW);
       check = 0;
       usrMESSAGE = "Responses have not been received from the rest of the system. Please check for faults and restart.";
       request->send(SPIFFS, "/message.html", String(), false, processor);
@@ -363,6 +446,13 @@ void setup() {
 
   //path to html file for power off
   server.on("/turnoff", HTTP_GET, [](AsyncWebServerRequest *request){
+    if (power == 0)
+    {
+      request->send(SPIFFS, "/startup.html", String(), false, processor);
+    }
+    else if (power != 0)
+    {
+
     command(1, "CONT", "0000");
     if (complete != 2)
     {
@@ -377,8 +467,8 @@ void setup() {
       power = 0;
       firealive = 0;
       panalive = 0;
-      command(1, "PAN", "0");//set pan to 0
-      command(1, "TILT", "0"); //set tilt to 0
+      command(1, "ZERO", "0"); //set tilt to 0 and PAN to 135 degrees
+     
       digitalWrite(PANTALLOW, LOW);
       digitalWrite(FARMALLOW, LOW);
       digitalWrite(allGOOD, LOW); //turn off all-good signal
@@ -386,7 +476,7 @@ void setup() {
       digitalWrite(microSwitch, LOW); //turn off micros
       digitalWrite(powerLED, LOW); //turn off power LED
       digitalWrite(intervene, LOW); //turn off intervene LED
-      request->send(SPIFFS, "/startup.html", String(), false, processor);  
+      request->send(SPIFFS, "/startup.html", String(), false, processor);    
     }
     else if (mode == "ON")
     {
@@ -396,16 +486,26 @@ void setup() {
 
       request->send(SPIFFS, "/message.html", String(), false, processor);
     }
+
+    }
+  
   });
 
   //path to ARM atred:
   server.on("/arm", HTTP_GET, [](AsyncWebServerRequest *request){
-    if (mode == "ON")
+    if (power == 0)
+    {
+      request->send(SPIFFS, "/startup.html", String(), false, processor);
+    }
+    else if(power !=  0)
+    {
+
+      if (mode == "ON")
       {
         if (fire == "NO")
         {
           digitalWrite(intervene, HIGH);
-          usrMESSAGE = "Please ensure that the mechanism is still. Remove the ammunition from the ATRED and take the elastic off the trigger before continuing.";
+          usrMESSAGE = "Please ensure that the mechanism is still. Remove the ammunition from the ATRED before continuing. Stand back from elastic during the disarm process";
           request->send(SPIFFS, "/message.html", String(), false, processor);
         }
         else if (fire == "YES")
@@ -418,13 +518,15 @@ void setup() {
             mode = "ON";
             fire = "YES";
           }
-          //digitalWrite(intervene, HIGH);
           request->send(SPIFFS, "/index.html", String(), false, processor);
         }
       }
       else if (mode == "OFF")
       {
-        command(2,"ARM1",mode);
+        digitalWrite(intervene, HIGH);
+        usrMESSAGE = "Please put the elastic in place over the trigger before continuing";
+        request->send(SPIFFS, "/degree.html", String(), false, processor); 
+        /*command(2,"ARM1",mode);
         if (complete == 2)
         {
           request->send(SPIFFS, "/index.html", String(), false, processor);
@@ -434,81 +536,144 @@ void setup() {
           digitalWrite(intervene, HIGH);
           usrMESSAGE = "Please put the elastic in place over the trigger before continuing";
           request->send(SPIFFS, "/degree.html", String(), false, processor);  
-        }        
+        } */       
         
       }
+
+    }
+
   });
 
 
   server.on("/degget", HTTP_GET, [](AsyncWebServerRequest *request){
-    if (request->hasParam(PARAM_INPUT_1)) {
-      armDEGREE = request->getParam(PARAM_INPUT_1)->value();
+    if (power == 0)
+    {
+      request->send(SPIFFS, "/startup.html", String(), false, processor);
     }
-    request->send(SPIFFS, "/degree.html", String(), false, processor);
+    else if (power != 0)
+    {
+      if (request->hasParam(PARAM_INPUT_1)) 
+      {
+      armDEGREE = request->getParam(PARAM_INPUT_1)->value();
+      }
+      request->send(SPIFFS, "/degree.html", String(), false, processor);  
+    }
     
   });
 
 
   server.on("/degret", HTTP_GET, [](AsyncWebServerRequest *request){
-    mode = "ON";
-    digitalWrite(intervene, LOW);
-    digitalWrite(allGOOD, HIGH);
-    command(2, armDEGREE, mode);
-    request->send(SPIFFS, "/index.html", String(), false, processor);
-    
+    if (power == 0)
+    {
+      request->send(SPIFFS, "/startup.html", String(), false, processor);
+    }
+    else if(power != 0)
+    {
+      command(2,"ARM1",mode);
+      if (complete == 2)
+      {
+        request->send(SPIFFS, "/index.html", String(), false, processor);
+      }
+      else if(complete != 2)
+      {
+        mode = "ON";
+        digitalWrite(intervene, LOW);
+        digitalWrite(allGOOD, HIGH);
+        command(2, armDEGREE, mode);
+        request->send(SPIFFS, "/index.html", String(), false, processor);
+      }
+    }
   });
 
   //path to enable firing:
   server.on("/fire", HTTP_GET, [](AsyncWebServerRequest *request){
-    if (mode == "OFF")
+    if (power == 0)
     {
-      fire = "NO";
+      request->send(SPIFFS, "/startup.html", String(), false, processor);
     }
-    else if (fire == "YES")
+    else if (power != 0)
     {
-      Serial.println("Cannot fire again. Disarm.");
-    }
-    else
-    {
-      fire = "YES";
-      command(2,"FIRE",fire);
-      if (complete == 2)
+      if (mode == "OFF")
       {
         fire = "NO";
       }
+      else if (fire == "YES")
+      {
+        Serial.println("Cannot fire again. Disarm.");
+      }
+      else
+      {
+        fire = "YES";
+        command(2,"FIRE",fire);
+        if (complete == 2)
+        {
+         fire = "NO";
+        }
+      }
+      request->send(SPIFFS, "/index.html", String(), false, processor);
     }
-    request->send(SPIFFS, "/index.html", String(), false, processor);
   });
 
  server.on("/pan", HTTP_GET, [](AsyncWebServerRequest *request){
 
-   if(request->hasParam(PARAM_INPUT_2)){
-      pandegpre = request->getParam(PARAM_INPUT_2)->value();
+   if (power == 0)
+   {
+     request->send(SPIFFS,"/startup.html", String(), false, processor);
    }
-    if ((mode!="ON")&&((pan < 60)&&(pan > -60)))
+   else if (power != 0)
+   {
+    if(request->hasParam(PARAM_INPUT_2))
     {
-      pan = pandegpre.toInt();
+      pandegpre = request->getParam(PARAM_INPUT_2)->value();
+    }
+    pan = pandegpre.toInt();
+    if (pan > 270)
+    {
+      pan = 270;
+    }
+    else if(pan < 0)
+    {
+      pan = 0;
+    }
+    if (mode!="ON")
+    {
       pandegpre = pandeg;
       pandeg = String(pan);
-      command(1,"PAN",pandeg);
+      command(1,"PANR",pandeg);
       if (complete == 2)
       {
         pandeg = pandegpre;
       }
     }
     request->send(SPIFFS, "/index.html", String(), false, processor);
+   }
+
   });
 
   //path to tilt mechanism
   server.on("/tilt", HTTP_GET, [](AsyncWebServerRequest *request){
-
-   if(request->hasParam(PARAM_INPUT_3)){
+    if (power == 0)
+    {
+      request->send(SPIFFS, "/startup.html", String(), false, processor);
+    }
+  else if (power !=0)
+  {
+    if(request->hasParam(PARAM_INPUT_3)){
       tiltdegpre = request->getParam(PARAM_INPUT_3)->value();
    }
+    tilt = tiltdegpre.toInt();
+
+    if (tilt > 75)
+    {
+      tilt = 75;
+    }
+    else if(tilt < 0)
+    {
+      tilt = 0;
+    }
 
     if ((mode!="ON")&&((tilt < 71)&&(tilt > -1)))
     {
-      tilt = tiltdegpre.toInt();
       tiltdegpre = tiltdeg;
       tiltdeg = String(tilt);
       command(1,"TILT",tiltdeg);
@@ -517,22 +682,34 @@ void setup() {
         tiltdeg = tiltdegpre;
       }
     }
-    request->send(SPIFFS, "/index.html", String(), false, processor);
+    request->send(SPIFFS, "/index.html", String(), false, processor); 
+  }
   });
+
   //path to zero the pan/tilt mechanisms
   server.on("/zero", HTTP_GET, [](AsyncWebServerRequest *request){
-    if (mode != "ON")
+    if (power == 0)
     {
-    tilt = 0;
-    pan = 0;
-
-    pandeg = String(pan);
-    tiltdeg = String(tilt);
-
-    command(1,"TILT",tiltdeg);
-    command(1,"PAN",pandeg);
+      request->send(SPIFFS, "/startup.html", String(), false, processor);
     }
-    request->send(SPIFFS, "/index.html", String(), false, processor);
+    else if(power != 0)
+    {
+      if (mode != "ON")
+    {
+    command(1,"ZERO","0");
+
+    if (complete != 2)
+    {
+      tilt = 0;
+      pan = 135;
+
+      pandeg = String(pan);
+      tiltdeg = String(tilt);
+    }
+    
+    }
+    request->send(SPIFFS, "/index.html", String(), false, processor);  
+    }
   });
 
 
@@ -541,8 +718,4 @@ void setup() {
 
 void loop() {
 
-  //digitalWrite(motorSwitch, HIGH);
-  //digitalWrite(microSwitch, HIGH);
-
-  // put your main code here, to run repeatedly:
 }
